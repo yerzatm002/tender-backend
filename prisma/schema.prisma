@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  SUPPLIER
+  CUSTOMER
+  MODERATOR
+}
+
+enum ProposalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum WorkflowStep {
+  MANAGER
+  LEGAL
+  FINANCE
+}
+
+enum TaskStatus {
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenders         Tender[]       @relation("TenderOwner")
+  proposals       Proposal[]
+  documents       Document[]
+  reviewsGiven    Review[]       @relation("ReviewFrom")
+  reviewsReceived Review[]       @relation("ReviewTo")
+  ratingsGiven    Rating[]       @relation("RatingFrom")
+  ratingsReceived Rating[]       @relation("RatingTo")
+  notifications   Notification[]
+  projects        Project[]      @relation("ProjectOwner")
+  auditLogs       AuditLog[]
+}
+
+model Tender {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  category    String
+  price       Float
+  deadline    DateTime
+  status      String
+  createdAt   DateTime @default(now())
+
+  ownerId   String
+  owner     User       @relation("TenderOwner", fields: [ownerId], references: [id])
+  proposals Proposal[]
+  documents Document[]
+  project   Project?
+}
+
+model Proposal {
+  id        String         @id @default(uuid())
+  message   String
+  status    ProposalStatus @default(PENDING)
+  createdAt DateTime       @default(now())
+
+  tenderId String
+  userId   String
+  tender   Tender            @relation(fields: [tenderId], references: [id])
+  user     User              @relation(fields: [userId], references: [id])
+  approval ApprovalWorkflow?
+}
+
+model Document {
+  id         String   @id @default(uuid())
+  filename   String
+  url        String
+  version    Int      @default(1)
+  uploadedAt DateTime @default(now())
+
+  userId   String
+  tenderId String?
+  user     User    @relation(fields: [userId], references: [id])
+  tender   Tender? @relation(fields: [tenderId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  type      String   // SYSTEM | EMAIL | PUSH
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  text      String
+  createdAt DateTime @default(now())
+
+  fromUserId String
+  toUserId   String
+  fromUser   User   @relation("ReviewFrom", fields: [fromUserId], references: [id])
+  toUser     User   @relation("ReviewTo", fields: [toUserId], references: [id])
+}
+
+model Rating {
+  id        String   @id @default(uuid())
+  score     Int
+  createdAt DateTime @default(now())
+
+  userId  String
+  raterId String
+  user    User   @relation("RatingTo", fields: [userId], references: [id])
+  rater   User   @relation("RatingFrom", fields: [raterId], references: [id])
+}
+
+model Project {
+  id        String     @id @default(uuid())
+  title     String
+  deadline  DateTime
+  status    TaskStatus @default(IN_PROGRESS)
+
+  tenderId  String @unique
+  ownerId   String
+
+  tender    Tender @relation(fields: [tenderId], references: [id])
+  owner     User   @relation("ProjectOwner", fields: [ownerId], references: [id])
+  tasks     Task[]
+}
+
+model Task {
+  id         String     @id @default(uuid())
+  title      String
+  status     TaskStatus @default(IN_PROGRESS)
+  createdAt  DateTime   @default(now())
+
+  projectId  String
+  project    Project    @relation(fields: [projectId], references: [id])
+}
+
+
+model ApprovalWorkflow {
+  id          String       @id @default(uuid())
+  currentStep WorkflowStep
+  isApproved  Boolean?
+  approvedAt  DateTime?
+
+  proposalId String   @unique
+  proposal   Proposal @relation(fields: [proposalId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+}
