@@ -42,6 +42,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   tenders         Tender[]       @relation("TenderOwner")
+  suppliedTenders Tender[]       @relation("TenderSupplier")
   proposals       Proposal[]
   documents       Document[]
   reviewsGiven    Review[]       @relation("ReviewFrom")
@@ -63,11 +64,15 @@ model Tender {
   status      String
   createdAt   DateTime @default(now())
 
-  ownerId   String
-  owner     User       @relation("TenderOwner", fields: [ownerId], references: [id])
-  proposals Proposal[]
-  documents Document[]
-  project   Project?
+  ownerId     String
+  owner       User       @relation("TenderOwner", fields: [ownerId], references: [id])
+
+  supplierId  String?   
+  supplier    User?      @relation("TenderSupplier", fields: [supplierId], references: [id])
+
+  proposals   Proposal[]
+  documents   Document[]
+  project     Project?
 }
 
 model Proposal {

@@ -20,9 +20,9 @@ exports.getTopSuppliers = async (req, res) => {
   const top = await prisma.proposal.groupBy({
     by: ['userId'],
     where: { status: 'APPROVED' },
-    _count: { _all: true },
-    orderBy: { _count: { _all: 'desc' } },
-    take: 5
+    _count: { userId: true },
+    orderBy: { _count: { userId: 'desc' } },
+    take: 5,
   });
 
   const enriched = await Promise.all(
@@ -30,13 +30,14 @@ exports.getTopSuppliers = async (req, res) => {
       const user = await prisma.user.findUnique({ where: { id: entry.userId } });
       return {
         supplier: { id: user.id, name: user.name, email: user.email },
-        wins: entry._count._all
+        wins: entry._count.userId,
       };
     })
   );
 
   res.json(enriched);
 };
+
 
 exports.getTenderStats = async (req, res) => {
   const { id } = req.params;

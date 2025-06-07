@@ -78,8 +78,11 @@ exports.getDocumentsByTender = async (req, res) => {
   const { tenderId } = req.params;
 
   const documents = await prisma.document.findMany({
-    where: {
-      tenderId
+    where: { tenderId },
+    include: {
+      user: {
+        select: { id: true, name: true, email: true }
+      }
     },
     orderBy: { uploadedAt: 'desc' }
   });

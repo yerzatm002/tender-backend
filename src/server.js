@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 
+
 dotenv.config();
 
 const authRoutes = require('./routes/auth.routes');
@@ -25,9 +26,11 @@ const auditRoutes = require('./routes/audit.routes');
 const app = express();
 app.use(cors());
 app.use(express.json());
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+console.log('Static served:', path.join(__dirname, 'uploads'));
 
 app.use('/auth', authRoutes);
-app.use('/documents', express.static('src/uploads'));
 app.use('/documents', documentRoutes);
 app.use('/users', userRoutes);
 app.use('/tenders', tenderRoutes);

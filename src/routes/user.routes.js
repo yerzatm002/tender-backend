@@ -6,7 +6,7 @@ const {
   getAllUsers, getUserById, updateUserRole, deleteUser
 } = require('../controllers/user.controller');
 
-router.use(auth, rbac(['ADMIN']));
+router.use(auth, rbac(['ADMIN', 'CUSTOMER']));
 
 router.get('/', getAllUsers);
 router.get('/:id', getUserById);

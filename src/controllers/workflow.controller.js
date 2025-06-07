@@ -17,13 +17,17 @@ exports.getWorkflow = async (req, res) => {
 exports.approveStep = async (req, res) => {
   const { proposalId } = req.params;
 
-  const workflow = await prisma.approvalWorkflow.findUnique({ where: { proposalId } });
+  const workflow = await prisma.approvalWorkflow.findUnique({
+    where: { proposalId },
+    include: { proposal: true }
+  });
+
   if (!workflow) return res.status(404).json({ error: 'Workflow not found' });
 
   const nextStepIndex = stepOrder.indexOf(workflow.currentStep) + 1;
 
   if (nextStepIndex >= stepOrder.length) {
-    // Финальное согласование
+    // Финальное одобрение
     await prisma.approvalWorkflow.update({
       where: { proposalId },
       data: {
@@ -31,11 +35,28 @@ exports.approveStep = async (req, res) => {
         approvedAt: new Date()
       }
     });
+
     await prisma.proposal.update({
       where: { id: proposalId },
       data: { status: 'APPROVED' }
     });
-    return res.json({ message: 'Proposal fully approved' });
+
+    // Автоматическое создание проекта
+    const tender = await prisma.tender.findUnique({
+      where: { id: workflow.proposal.tenderId }
+    });
+
+    await prisma.project.create({
+      data: {
+        title: `Проект по тендеру: ${tender.title}`,
+        deadline: tender.deadline,
+        status: 'IN_PROGRESS',
+        tenderId: tender.id,
+        ownerId: tender.ownerId
+      }
+    });
+
+    return res.json({ message: 'Proposal fully approved and project created' });
   }
 
   const updated = await prisma.approvalWorkflow.update({

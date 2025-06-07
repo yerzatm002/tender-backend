@@ -11,11 +11,23 @@ exports.getReviewsByUser = async (req, res) => {
     }
   });
 
-  res.json(reviews);
+  const average = await prisma.rating.aggregate({
+    where: { userId },
+    _avg: { score: true }
+  });
+
+  res.json({
+    reviews,
+    averageScore: average._avg.score || 0
+  });
 };
 
 exports.createReview = async (req, res) => {
-  const { toUserId, text } = req.body;
+  const { toUserId, text, score } = req.body;
+
+  if (!toUserId || !score || !text) {
+    return res.status(400).json({ error: "Missing review fields" });
+  }
 
   if (toUserId === req.user.id) {
     return res.status(400).json({ error: "Can't review yourself" });
@@ -29,12 +41,21 @@ exports.createReview = async (req, res) => {
     }
   });
 
+  await prisma.rating.create({
+    data: {
+      score,
+      userId: toUserId,
+      raterId: req.user.id
+    }
+  });
+
   res.status(201).json(review);
 };
 
+
 exports.updateReview = async (req, res) => {
   const { id } = req.params;
-  const { text } = req.body;
+  const { text, score } = req.body;
 
   const review = await prisma.review.findUnique({ where: { id } });
 
@@ -45,6 +66,14 @@ exports.updateReview = async (req, res) => {
   const updated = await prisma.review.update({
     where: { id },
     data: { text }
+  });
+
+  await prisma.rating.updateMany({
+    where: {
+      raterId: req.user.id,
+      userId: review.toUserId
+    },
+    data: { score }
   });
 
   res.json({ message: 'Review updated', review: updated });
@@ -60,5 +89,13 @@ exports.deleteReview = async (req, res) => {
   }
 
   await prisma.review.delete({ where: { id } });
-  res.json({ message: 'Review deleted' });
+
+  await prisma.rating.deleteMany({
+    where: {
+      raterId: req.user.id,
+      userId: review.toUserId
+    }
+  });
+
+  res.json({ message: 'Review and rating deleted' });
 };

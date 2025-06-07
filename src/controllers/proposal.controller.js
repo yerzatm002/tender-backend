@@ -34,11 +34,22 @@ exports.getProposalById = async (req, res) => {
 exports.createProposal = async (req, res) => {
   const { message, tenderId } = req.body;
 
+  // Создаём заявку
   const proposal = await prisma.proposal.create({
     data: {
       message,
       tenderId,
-      userId: req.user.id
+      userId: req.user.id,
+      status: 'PENDING'
+    }
+  });
+
+  // Создаём approval workflow
+  await prisma.approvalWorkflow.create({
+    data: {
+      currentStep: 'MANAGER',
+      isApproved: false,
+      proposal: { connect: { id: proposal.id } }
     }
   });
 

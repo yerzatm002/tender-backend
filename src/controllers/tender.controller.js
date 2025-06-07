@@ -45,9 +45,20 @@ exports.updateTender = async (req, res) => {
 exports.deleteTender = async (req, res) => {
   const { id } = req.params;
   const tender = await prisma.tender.findUnique({ where: { id } });
-  if (!tender || tender.ownerId !== req.user.id)
-    return res.status(403).json({ error: 'Forbidden' });
+
 
   await prisma.tender.delete({ where: { id } });
   res.json({ message: 'Tender deleted' });
+};
+
+exports.updateTenderStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  const updated = await prisma.tender.update({
+    where: { id },
+    data: { status }
+  });
+
+  res.json(updated);
 };
